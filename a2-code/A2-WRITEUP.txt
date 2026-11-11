@@ -1,0 +1,186 @@
+                              ____________
+
+                               A2 WRITEUP
+                              ____________
+
+
+
+
+
+GROUP MEMBERS
+-------------
+
+  - Member 1: Dimitri Trifunac trifu001
+  - Member 2: <NAME> <X500>
+
+  Up to 2 people may collaborate on this assignment. Write names/x.500
+  above. If working alone, leave off Member 2.
+
+  ONLY ONE GROUP MEMBER SHOULD SUBMIT TO GRADESCOPE THEN ADD THEIR
+  PARTNER ACCORDING TO INSTRUCTIONS IN THE ASSIGNMENT WEB PAGE.
+
+
+Problem 1: heat_mpi
+===================
+
+heat_mpi Timing Table
+~~~~~~~~~~~~~~~~~~~~~
+
+  Fill in the following table on measuring the performance of your
+  `heat_mpi' program on MSI's Mesabi machine. Replace 00.00 entries with
+  your actual run times. You can use the provided `heat-slurm.sh' script
+  to ease this task. Submit it using `sbatch heat-slurm.sh' and extract
+  the lines marked `runtime:'.
+
+  ------------------------------------
+                 Width         
+   Procs   6400  25600  102400  204800
+  -------------------------------------
+       1  06.59  04.89   04.82   05.16
+       2  04.58  04.64   04.75   05.12
+       4  05.12  04.87   04.70   04.79
+       8  04.65  04.64   06.27   04.73
+      10  05.01  04.70   04.71   04.74 
+      16  04.75  05.16   05.02   04.77 
+      32  04.76  04.75   04.75   04.76
+      64  05.05  04.99   04.88   04.92
+     128  05.02  05.01   05.51   05.03
+  -----------------------------
+
+
+heat_mpi Discussion Questions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Analyze your table of results and answer the following questions.
+  1. Did using more processors result in speedups?
+
+    Using more processors didn't really speed things up. For the width 6400
+    and 204800 cases it sped up but marginally. In the cases for setting the width
+    to 25600 and 102400 using more processors actually slowed things down.
+
+  2. Describe any trends or anomalies you see in the timings and
+     speculate on their causes - e.g. was there are a steady increase in
+     runtimes, steady decrease, or jagged changes in timing?
+
+     For width of 204800, increasing the number of processors up to 8 resulted 
+     in a slow and steady increase in speedup. The exact opposite happpened after 
+     10 processers, where times begame to steadily increase again. This makes me 
+     think that 10 processors might be the optimal number for this particular width, implying 
+     that the overhead of adding more processers outweights the speedup each processor 
+     can offer by splitting up the data. All the tests for the other widths were much 
+     more inconsistent and jagged, a good example being whenm the test for width 102400 jumped up 
+     by a factor of 30% when going from 4 processers to 8, and then decreasing equally 
+     as drastically going from 8 to 10. 
+
+  3. Try to explain how number of processors and problem size seem to
+     affect runtimes/speedup in the problem. Consider that most Mesabi
+     Nodes have 24 cores on them. Comment on whether this number seems
+     to affect the performance of the runs you see.
+
+     The majority of the results are too inconsistent to make any strong conclusion. The 
+     one case, where width was 102400, that had any consistency hit a local minimum with 8 
+     processers, which is quite a bit less than 24. None of the runs showed any strong correlation 
+     when they used more or less than 24 processors. My guess is that the problem sizes (widths) 
+     weren't large enough to reflect a huge difference in speedup with more processors. I think 
+     this because one case that would cause such marginal differences in times is when the overhead associated
+     with bringing in more processors is about the same as the speedup acheived by dividing up the work. Tt
+     is also possible that my implementation didn't take full advantage of parallelizing and caused slow downs.
+
+
+Problem 2: kmeans_serial vs kmeans_mpi
+======================================
+
+  Discuss how you chose to parallelize your serial version of K-means in
+  the program `kmeans_mpi.c'. Answer the following questions briefly.
+  1. How is the input and output data partitioned among the processors?
+
+      I read in all the input in the the root process, then divided it up by individual data, 
+      spreading rows of data as evenly as possible between different processers. Each process had its own copy 
+      of the KMClust struct which had to be updated each iteration to gaurantee that all processors had consistent features.
+      The output required communicating how many data were in each cluster to the root node so that it could print this out, and
+      save to the output file.
+
+  2. What communication is required throughout the algorithm?
+
+      The first communications that had to be done were the root processor communicating important metrics relating to 
+      how much of the total data each processor would get. Once that was figured out, the root had to scatter its data to all 
+      the procesors so that they could start working on their respective chunk of the data. Throughout the algorithm, the processers 
+      had to communicate the updated feature centers of their clusters, as well as the number of their data in each cluster, so that 
+      all the processors could update their own KMClust struct and make the correct assignment to the data in the next step. They also 
+      had to reduce their counts for each cluster so that the root processor could print out the updated number of members of each cluster. 
+      For each iteration, all the procs had to all reduce the number of changes they encountered, so that it would be known by all procs whether 
+      they were to continue or not. This avoided the case where one proc would have had no changes, but another one would have had a few and 
+      needed to keep on going. At the end, an all gather was needed to collect in the root processor which cluster each of the data was put into 
+      once the main algorithm finished. This was needed in order to make the confusion matrix and save the results to the output file.
+
+  3. Which MPI collective communication operations did you employ?
+      I used MPI_Init(), MPI_Comm_rank (), MPI_Comm_size (),  MPI_Bcast(), MPI_Scatterv(), MPI_Allreduce(), MPI_Gatherv(), and MPI_Finalize().
+
+
+Problem 3: kmeans_mpi
+=====================
+
+kmeans_mpi Timing Table
+~~~~~~~~~~~~~~~~~~~~~~~
+
+  Fill in the following table on measuring the performance of your
+  `kmeans_mpi' program on MSI's Mesabi machine. Replace 00.00 entries
+  with your actual run times. You can use the provided `kmeans-slurm.sh'
+  script to ease this task.
+
+  The columns are for each of 3 data files that are provided and run in
+  the job script.
+
+  digits_all_5e3.txt digits_all_1e4.txt
+  -------------------------------------------------------------------
+                                       Data File                     
+   Procs  digits_all_5e3.txt  digits_all_1e4.txt  digits_all_3e4.txt 
+  -------------------------------------------------------------------
+       1               04.69               10.21               12.26 
+       2               04.36               06.15               09.44 
+       4               06.58               06.28               09.42 
+       8               05.43               06.30               09.58 
+      10               05.39               06.22               09.51 
+      16               06.48               08.88               10.67 
+      32               06.54               08.36               11.42 
+      64               07.45               08.41               11.83 
+     128               07.53               10.76               11.70 
+  -------------------------------------------------------------------
+
+
+kmeans_mpi Discussion Questions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Analyze your table of results and answer the following questions.
+  1. Did using more processors result in speedups?
+
+      Unlike problem 1, using more processors did result in speedups across the board. 
+      That is until 10 processors was reached, and then things started slowing down.
+
+  2. Describe any trends or anomalies you see in the timings and
+     speculate on their causes - e.g. was there are a steady increase in
+     runtimes, steady decrease, or jagged changes in timing?
+      
+      As mentioned before, there was a steady increase in speedup up until 10 processers, after
+      which there was a gradual slowdown in speeds. However, for digist_all_1e4.txt, things started to
+      gradually speed up again between 16 and 64 processors inclusive. Things got considerably worse when 
+      128 procesors were used on this file, likely because MSI has 24 cores per node, and using so many cores
+      required a lot of communication between nodes which is likely slower than communication within a node. I 
+      should also not that the results for ditis_all_5e3.txt were a bit jagged with some anomolies like 6.58 for 4 
+      cores which is quite a bit higher than the result for 2 and 8 cores on the same file. For the last file, runtimes
+      generally slowed down after reaching 16 processors.
+
+  3. Try to explain how number of processors and problem size seem to
+     affect runtimes/speedup in the problem. Consider that most Mesabi
+     Nodes have 24 cores on them. Comment on whether this number seems
+     to affect the performance of the runs you see.
+
+     For the first and last file columns, there was an increase in runtimes going from 16 to 32 processors, which agrees with
+     the idea that, since this would force processors to be on seperate nodes as MSI has 24 processors per node, internode communication
+     drastically slowed things down since it is a lot slower than communicating within a node. This overhead of communicating with another node
+     outweighed the benefits of having more processors to spread the data among. The middle column however remained immune to slow downs until going
+     from 64 to 128 processors where, I'm guessing that the need to communicate between 6 nodes became too costly in terms of time. In the general case, 
+     up until 10 processors, using more processors seemed to help speed things up for all the input files tested. Interestingly, things slowed down at 
+     16 processors even though this woud still have been on one node.
+
+

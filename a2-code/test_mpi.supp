@@ -1,0 +1,152 @@
+# valgrind suppression file for OpenMPI programs; attempts suppress
+# leaks and uninitialized memory errors stemming from OpenMPI or the
+# Linux kernel to focus attention on errors in user programs.
+{
+   <Ignore MPI bug>
+   Memcheck:Leak
+   ...
+   fun:PMPI_Init
+   ...
+}
+{
+   <Ignore MPI bug>
+   Memcheck:Cond
+   ...
+   fun:PMPI_Init
+   ...
+}
+{
+   <Ignore MPI bug>
+   Memcheck:Leak
+   ...
+   fun:ompi_mpi_finalize
+   ...
+}
+{
+   <Ignore MPI bug>
+   Memcheck:Leak
+   ...
+   fun:PMPI_Gather
+   ...
+}
+{
+   <Ignore MPI bug>
+   Memcheck:Leak
+   ...
+   fun:PMPI_Gather
+   ...
+}
+{
+   <MPI leaks in sendrecv>
+   Memcheck:Leak
+   ...
+   fun:PMPI_Sendrecv
+   ...
+}
+{
+   <MPI leaks in underlying library>
+   Memcheck:Leak
+   ...
+   fun:mca_rcache_base_module_create
+}
+{
+   <MPI Init leaks>
+   Memcheck:Leak
+   ...
+   fun:ompi_mpi_init
+}
+{
+   <dynamic librarly loading>
+   Memcheck:Leak
+   ...
+   fun:dlopen*
+}
+{
+   <clone uninitialized bug>
+   Memcheck:Param
+   writev(vector[...])
+   ...
+   fun:clone
+   ...
+}
+{
+   <kernel leak>
+   Memcheck:Leak
+   ...
+   fun:clone
+}
+{
+   <library leak in OpenMPI>
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/*/*/*/libopen-pal*
+   ...
+}
+{
+   <library leak in OpenMPI>
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/*/libhwloc*
+   ...
+}
+{
+   <library leak in OpenMPI>
+   Memcheck:Leak
+   ...
+   obj:/*/mca_bml_r2.so
+   ...
+}
+{
+   <library leak in OpenMPI>
+   Memcheck:Leak
+   ...
+   obj:/*/mca_pmix_ext3x.so
+   ...
+}
+{
+   <library uninitialized in OpenMPI>
+   Memcheck:Cond
+   ...
+   obj:/*/libmpi.so*
+   ...
+}
+{
+   <library uninitialized in libpmix>
+   Memcheck:Param
+   writev(vector[1])
+   ...
+   obj:/*/libpmix.so*
+   ...
+}
+{
+   <library OpenMPI: suppress all leaks originating from library calls>
+   Memcheck:Leak
+   ...
+   obj:/*/openmpi/*.so*
+   ...
+}
+
+## OpenMP / GOMP error suppression
+{
+   <library GOMP: suppress all leaks originating from library calls>
+   Memcheck:Leak
+   ...
+   obj:/*/libgomp.so*
+   ...
+}
+
+# {
+#    <library GOMP: suppress all leaks originating from library calls>
+#    Memcheck:Leak
+#    ...
+#    fun:GOMP_parallel
+#    ...
+# }
+# {
+#    <library GOMP: suppress all leaks originating from library calls>
+#    Memcheck:Leak
+#    ...
+#    fun:gomp_init_num_threads
+#    ...
+# }
+
