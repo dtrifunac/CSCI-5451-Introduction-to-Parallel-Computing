@@ -1,0 +1,142 @@
+                              ____________
+
+                               A3 WRITEUP
+                              ____________
+
+
+
+
+
+GROUP MEMBERS
+-------------
+
+  - Member 1: Dimitri Trifunac trifu001
+  - Member 2: <NAME> <X500>
+
+  Up to 2 people may collaborate on this assignment. Write names/x.500
+  above. If working alone, leave off Member 2.
+
+  ONLY ONE GROUP MEMBER SHOULD SUBMIT TO GRADESCOPE THEN ADD THEIR
+  PARTNER ACCORDING TO INSTRUCTIONS IN THE ASSIGNMENT WEB PAGE.
+
+
+Problem 1: kmeans_omp
+=====================
+
+kmeans_omp Timing Table
+~~~~~~~~~~~~~~~~~~~~~~~
+
+  Fill in the following table on measuring the performance of your
+  `kmeans_omp' program on `cudaNN.cselabs.umn.edu' where `NN' is `01' to
+  `05'. Replace 00.00 entries with your actual run times. You can use
+  the provided `kmeans-omp.sh' script to ease this task.
+
+  The columns are for each of 3 data files that are provided and run in
+  the job script.
+
+  -------------------------------------------------------------------
+                                       Data File                     
+   Procs  digits_all_5e3.txt  digits_all_1e4.txt  digits_all_3e4.txt 
+  -------------------------------------------------------------------
+       1               04.43               25.31               69.13 
+       2               02.74               13.79               38.96 
+       4               01.88               07.93               21.89 
+       8               01.46               05.09               14.09 
+      10               01.38               04.54               12.33 
+      13               01.31               03.99               11.09 
+      16               01.27               03.65               10.34 
+      32               01.15               03.07               08.50 
+  -------------------------------------------------------------------
+
+
+kmeans_omp Discussion Questions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Analyze your table of results and answer the following questions.
+  1. Did using more processors result in speedups?
+
+      Yes. Accross the board, using more processors resulted in speedups.
+
+  2. Describe any trends or anomalies you see in the timings and
+     speculate on their causes - e.g. was there are a steady increase in
+     runtimes, steady decrease, or jagged changes in timing?\
+
+    There was an exponential decay in rate of speedup as you used more processors on 
+    the same problem. Everything was pretty steadily decreasing and there wasn't any jagged
+    results or weird increases. To elaborate on the first sentence, adding more processors
+    resulted in less and less of a speedup the more you added, but still resulted in a speedup.
+
+  3. Try to explain how number of processors and problem size seem to
+     affect runtimes/speedup in the problem.
+
+     Generally, going from 1 to 2 processors seemed to almost half the runtime.
+     It seems that there is more reward for adding more processors when the problem
+     size if bigger than smaller. This makes sense, because there is an overhead
+     associated with starting up threads which becomes negligible when the problem
+     size is large enough, and limits the amount of speedup when the problem isn't large
+     enough. This is noted in comparing the leftmost and rightmost columns, where using
+     32 procs on the left resulted in the timing taking around 25% of the serial runtime, 
+     whereas, in the rightmost column, using 32 procs resulted in the timing taking only
+     around 12% of the serial runtime. The rightmost column was a bigger problem, noted by
+     the longer serial runtime. The leftmost column saw diminishing returns once 8 procs were 
+     used, the middle when 16 procs were used, and the rightmost still had reasonable speadups.
+
+
+Problem 2: kmeans_cuda
+======================
+
+kmeans_cuda Timing Table
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Fill in the following table on measuring the performance of your
+  `kmeans_cuda' program on `cudaNN.cselabs.umn.edu' where `NN' is `01'
+  to `05'. Replace 00.00 entries with your actual run times. You can use
+  the provided `kmeans-omp.sh' script to ease this task.
+
+  The columns are for each of 3 data files that are provided and run in
+  the job script.
+
+  ------------------------------------------------------------------------
+                                            Data File                     
+   Procs       digits_all_5e3.txt  digits_all_1e4.txt  digits_all_3e4.txt 
+  ------------------------------------------------------------------------
+   CPU Serial               04.21               23.99               65.90 
+   GPU                      01.84               03.97               09.33 
+  ------------------------------------------------------------------------
+
+
+kmeans_cuda Discussion Questions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Analyze your table of results and answer the following questions.
+  1. Did using the GPU result in speedups?
+
+    Yes, using the GPU resulted in a massive speedup.
+
+  2. Describe your general approach on how you used GPU threads/blocks
+     to parallelize the algorithm.
+     - How did you subdivide the Cluster Center Calculation Phase?
+     - How did you subdivide the Data Assignment Phase?
+
+     I subdivided the cluster center calculation phase by making a block for each cluster
+     and a thread for each dimention, and had each block interate through all the data points
+     and have the thread update its respective dimension of that cluster if the data point it was
+     on was assigned to that cluster. I found that this worked best because it removed the need for any
+     synchronization or atomocization between the threads as they were all changing different parts 
+     of the memory. This was made possible also because the problem fixed the size of the dimension of the data
+     so that there would be enough threads in each block to have one thread per index of the dimension. Since 
+     only one thread was assigned to each dimension, this approach also made what was previously an inner loop
+     run in linear time.
+
+     I subdivided the data assignment phase by first seeing how many data points there were. If the problem
+     was small, I only created one block and assigned each thread to one of the datapoints. If the problem was
+     larger, I used the appropriate number of blocks and had each one use 1000 threads, each thread still being 
+     assigned to one datapoint. I thought this approach did well because it subdivied the outter loop which had 
+     the most potential to scale as problem sizes got bigger. However, since there was no way of knowing which cluster
+     the data point would get assigned to ahead of time, this approach required using atomoic add to augment the 
+     count of each cluster, as well as the number of changes. I thought that this drawback would be minor though since
+     the number of changes should decrease as the algorithm get closer and closer to converging, thus minimizing
+     these drawbacks the further into the algorithm it got. This approach also had the plus side of not needing to
+     atomicize the that data's cluster assignment, as each thread was operating  on a different data point. The atomic 
+     add drawback of this approach would be much more of a problem if no convergence was found, as a pretty high number 
+     of calls to atomicadd would occur in this situation.
